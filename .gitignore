@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 案例数据
+data/cases/网络男神之亿万富翁与幽灵班花coser女友.md

@@ -60,7 +60,9 @@ export function getAllCases(): CaseMeta[] {
 // 获取单个案例的完整数据
 export async function getCaseData(id: string): Promise<CaseData | null> {
   try {
-    const fullPath = path.join(casesDirectory, `${id}.md`);
+    // 对URL编码的文件名进行解码
+    const decodedId = decodeURIComponent(id);
+    const fullPath = path.join(casesDirectory, `${decodedId}.md`);
     const fileContents = fs.readFileSync(fullPath, 'utf8');
     const matterResult = matter(fileContents);
 
@@ -72,7 +74,7 @@ export async function getCaseData(id: string): Promise<CaseData | null> {
     const contentHtml = processedContent.toString();
 
     return {
-      id,
+      id: decodedId,
       title: matterResult.data.title,
       description: matterResult.data.description,
       image: matterResult.data.image,
