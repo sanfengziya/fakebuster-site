@@ -7,12 +7,9 @@ interface CasePageProps {
   params: Promise<{ id: string }>;
 }
 
-export async function generateStaticParams() {
-  const cases = await getAllCaseIds();
-  return cases.map((caseItem) => ({
-    id: caseItem.params.id,
-  }));
-}
+// 移除静态生成，改为动态渲染以确保数据实时更新
+// 强制动态渲染
+export const dynamic = 'force-dynamic';
 
 export default async function CasePage({ params }: CasePageProps) {
   const { id } = await params;

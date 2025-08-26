@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { getLatestCases } from '@/lib/markdown';
 
+// 强制动态渲染以确保最新案例实时更新
+export const dynamic = 'force-dynamic';
+
 export default async function Home() {
   const latestCases = await getLatestCases(6);
 

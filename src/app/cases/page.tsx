@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { getAllCases } from '@/lib/markdown';
 
+// 强制动态渲染以确保案例列表实时更新
+export const dynamic = 'force-dynamic';
+
 export default async function CasesPage() {
   const allCases = await getAllCases();
 
