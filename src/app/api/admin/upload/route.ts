@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     let matterResult;
     try {
       matterResult = matter(fileContent);
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         { error: 'Markdown文件格式错误' },
         { status: 400 }
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 验证frontmatter
-    const { data: frontmatter, content } = matterResult;
+    const { data: frontmatter } = matterResult;
     if (!frontmatter.id || !frontmatter.title || !frontmatter.description || !frontmatter.date) {
       return NextResponse.json(
         { error: 'Markdown文件缺少必要的frontmatter字段 (id, title, description, date)' },
@@ -72,8 +72,8 @@ export async function POST(request: NextRequest) {
       title: frontmatter.title,
       message: '文件上传成功'
     });
-  } catch (error) {
-    console.error('Upload error:', error);
+  } catch (uploadError) {
+    console.error('Upload error:', uploadError);
     return NextResponse.json(
       { error: '文件上传失败' },
       { status: 500 }

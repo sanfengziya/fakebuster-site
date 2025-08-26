@@ -11,9 +11,9 @@ export function verifyAdminToken(request: NextRequest): boolean {
       return false;
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = jwt.verify(token, JWT_SECRET) as { admin: boolean };
     return decoded.admin === true;
-  } catch (error) {
+  } catch {
     return false;
   }
 }
@@ -34,9 +34,9 @@ export function getAdminTokenFromCookies(cookies: string): boolean {
       return false;
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = jwt.verify(token, JWT_SECRET) as { admin: boolean };
     return decoded.admin === true;
-  } catch (error) {
+  } catch {
     return false;
   }
 }

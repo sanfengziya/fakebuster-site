@@ -51,8 +51,8 @@ export async function getGitHubCaseFiles(): Promise<GitHubFile[]> {
   try {
     const files = await githubRequest(`/repos/${REPO_OWNER}/${REPO_NAME}/contents/${CASES_PATH}`);
     return files.filter((file: GitHubFile) => file.name.endsWith('.md'));
-  } catch (error) {
-    console.error('Error fetching GitHub case files:', error);
+  } catch (fetchError) {
+    console.error('Error fetching GitHub case files:', fetchError);
     return [];
   }
 }
@@ -69,8 +69,8 @@ export async function getGitHubFileContent(filename: string): Promise<string | n
     }
     
     return response.content;
-  } catch (error) {
-    console.error(`Error fetching GitHub file content for ${filename}:`, error);
+  } catch (fetchError) {
+    console.error(`Error fetching GitHub file content for ${filename}:`, fetchError);
     return null;
   }
 }
@@ -98,8 +98,8 @@ export async function createOrUpdateGitHubFile(
     );
 
     return true;
-  } catch (error) {
-    console.error(`Error creating/updating GitHub file ${filename}:`, error);
+  } catch (updateError) {
+    console.error(`Error creating/updating GitHub file ${filename}:`, updateError);
     return false;
   }
 }
@@ -119,8 +119,8 @@ export async function deleteGitHubFile(filename: string, sha: string): Promise<b
     );
 
     return true;
-  } catch (error) {
-    console.error(`Error deleting GitHub file ${filename}:`, error);
+  } catch (deleteError) {
+    console.error(`Error deleting GitHub file ${filename}:`, deleteError);
     return false;
   }
 }
@@ -132,8 +132,8 @@ export async function getGitHubFileSha(filename: string): Promise<string | null>
       `/repos/${REPO_OWNER}/${REPO_NAME}/contents/${CASES_PATH}/${filename}`
     );
     return response.sha;
-  } catch (error) {
-    console.error(`Error fetching GitHub file SHA for ${filename}:`, error);
+  } catch (fetchError) {
+    console.error(`Error fetching GitHub file SHA for ${filename}:`, fetchError);
     return null;
   }
 }
@@ -148,6 +148,6 @@ export function parseMarkdownContent(content: string) {
 }
 
 // 生成markdown文件内容
-export function generateMarkdownContent(frontmatter: any, content: string): string {
+export function generateMarkdownContent(frontmatter: Record<string, unknown>, content: string): string {
   return matter.stringify(content, frontmatter);
 }

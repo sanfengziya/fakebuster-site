@@ -29,8 +29,8 @@ export default function AdminLogin() {
         const data = await response.json();
         setError(data.error || '登录失败');
       }
-    } catch (error) {
-      setError('网络错误，请重试');
+    } catch {
+      setError('登录失败，请重试');
     } finally {
       setLoading(false);
     }
