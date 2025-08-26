@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { getLatestCases } from '@/lib/markdown';
 
-export default function Home() {
-  const latestCases = getLatestCases(6);
+export default async function Home() {
+  const latestCases = await getLatestCases(6);
 
   return (
     <div className="">

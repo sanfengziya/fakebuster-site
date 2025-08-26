@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminToken } from '@/lib/auth';
-import fs from 'fs';
-import path from 'path';
-import matter from 'gray-matter';
-
-const casesDirectory = path.join(process.cwd(), 'data/cases');
+import { 
+  getGitHubFileContent, 
+  parseMarkdownContent,
+  createOrUpdateGitHubFile,
+  deleteGitHubFile,
+  getGitHubFileSha,
+  generateMarkdownContent
+} from '@/lib/github';
 
 // 获取单个案例详情
 export async function GET(
@@ -17,24 +20,25 @@ export async function GET(
 
   try {
     const { id } = await params;
-    const filePath = path.join(casesDirectory, `${id}.md`);
+    const filename = `${id}.md`;
+    const fileContent = await getGitHubFileContent(filename);
 
-    if (!fs.existsSync(filePath)) {
+    if (!fileContent) {
       return NextResponse.json(
         { error: '案例不存在' },
         { status: 404 }
       );
     }
 
-    const fileContents = fs.readFileSync(filePath, 'utf8');
-    const matterResult = matter(fileContents);
+    const { frontmatter, content } = parseMarkdownContent(fileContent);
 
     return NextResponse.json({
       id,
-      ...matterResult.data,
-      content: matterResult.content
+      ...frontmatter,
+      content
     });
   } catch (error) {
+    console.error('Error fetching case:', error);
     return NextResponse.json(
       { error: '读取案例失败' },
       { status: 500 }
@@ -54,9 +58,11 @@ export async function PUT(
   try {
     const { id } = await params;
     const { title, description, image, date, tags, content } = await request.json();
-    const filePath = path.join(casesDirectory, `${id}.md`);
+    const filename = `${id}.md`;
 
-    if (!fs.existsSync(filePath)) {
+    // 检查文件是否存在并获取SHA
+    const sha = await getGitHubFileSha(filename);
+    if (!sha) {
       return NextResponse.json(
         { error: '案例不存在' },
         { status: 404 }
@@ -82,13 +88,26 @@ export async function PUT(
     };
 
     // 生成markdown文件内容
-    const fileContent = matter.stringify(content, frontmatter);
+    const fileContent = generateMarkdownContent(frontmatter, content);
 
-    // 写入文件
-    fs.writeFileSync(filePath, fileContent, 'utf8');
+    // 更新GitHub文件
+    const success = await createOrUpdateGitHubFile(
+      filename,
+      fileContent,
+      `Update case: ${title}`,
+      sha
+    );
 
-    return NextResponse.json({ success: true });
+    if (success) {
+      return NextResponse.json({ success: true });
+    } else {
+      return NextResponse.json(
+        { error: '更新案例失败' },
+        { status: 500 }
+      );
+    }
   } catch (error) {
+    console.error('Error updating case:', error);
     return NextResponse.json(
       { error: '更新案例失败' },
       { status: 500 }
@@ -107,20 +126,30 @@ export async function DELETE(
 
   try {
     const { id } = await params;
-    const filePath = path.join(casesDirectory, `${id}.md`);
+    const filename = `${id}.md`;
 
-    if (!fs.existsSync(filePath)) {
+    // 获取文件SHA用于删除
+    const sha = await getGitHubFileSha(filename);
+    if (!sha) {
       return NextResponse.json(
         { error: '案例不存在' },
         { status: 404 }
       );
     }
 
-    // 删除文件
-    fs.unlinkSync(filePath);
+    // 删除GitHub文件
+    const success = await deleteGitHubFile(filename, sha);
 
-    return NextResponse.json({ success: true });
+    if (success) {
+      return NextResponse.json({ success: true });
+    } else {
+      return NextResponse.json(
+        { error: '删除案例失败' },
+        { status: 500 }
+      );
+    }
   } catch (error) {
+    console.error('Error deleting case:', error);
     return NextResponse.json(
       { error: '删除案例失败' },
       { status: 500 }

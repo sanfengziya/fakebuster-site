@@ -8,7 +8,7 @@ interface CasePageProps {
 }
 
 export async function generateStaticParams() {
-  const cases = getAllCaseIds();
+  const cases = await getAllCaseIds();
   return cases.map((caseItem) => ({
     id: caseItem.params.id,
   }));

@@ -1,11 +1,11 @@
-import fs from 'fs';
-import path from 'path';
-import matter from 'gray-matter';
 import { remark } from 'remark';
 import html from 'remark-html';
 import remarkGfm from 'remark-gfm';
-
-const casesDirectory = path.join(process.cwd(), 'data/cases');
+import { 
+  getGitHubCaseFiles, 
+  getGitHubFileContent, 
+  parseMarkdownContent 
+} from './github';
 
 export interface CaseData {
   id: string;
@@ -27,34 +27,41 @@ export interface CaseMeta {
 }
 
 // 获取所有案例的元数据
-export function getAllCases(): CaseMeta[] {
-  const fileNames = fs.readdirSync(casesDirectory);
-  const allCasesData = fileNames
-    .filter(fileName => fileName.endsWith('.md'))
-    .map((fileName) => {
-      const id = fileName.replace(/\.md$/, '');
-      const fullPath = path.join(casesDirectory, fileName);
-      const fileContents = fs.readFileSync(fullPath, 'utf8');
-      const matterResult = matter(fileContents);
+export async function getAllCases(): Promise<CaseMeta[]> {
+  try {
+    const files = await getGitHubCaseFiles();
+    const allCasesData: CaseMeta[] = [];
 
-      return {
-        id,
-        title: matterResult.data.title,
-        description: matterResult.data.description,
-        image: matterResult.data.image,
-        date: matterResult.data.date,
-        tags: matterResult.data.tags || [],
-      };
-    });
-
-  // 按日期排序，最新的在前
-  return allCasesData.sort((a, b) => {
-    if (a.date < b.date) {
-      return 1;
-    } else {
-      return -1;
+    for (const file of files) {
+      const id = file.name.replace(/\.md$/, '');
+      const content = await getGitHubFileContent(file.name);
+      
+      if (content) {
+        const { frontmatter } = parseMarkdownContent(content);
+        
+        allCasesData.push({
+          id,
+          title: frontmatter.title,
+          description: frontmatter.description,
+          image: frontmatter.image,
+          date: frontmatter.date,
+          tags: frontmatter.tags || [],
+        });
+      }
     }
-  });
+
+    // 按日期排序，最新的在前
+    return allCasesData.sort((a, b) => {
+      if (a.date < b.date) {
+        return 1;
+      } else {
+        return -1;
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching all cases:', error);
+    return [];
+  }
 }
 
 // 获取单个案例的完整数据
@@ -62,24 +69,29 @@ export async function getCaseData(id: string): Promise<CaseData | null> {
   try {
     // 对URL编码的文件名进行解码
     const decodedId = decodeURIComponent(id);
-    const fullPath = path.join(casesDirectory, `${decodedId}.md`);
-    const fileContents = fs.readFileSync(fullPath, 'utf8');
-    const matterResult = matter(fileContents);
+    const filename = `${decodedId}.md`;
+    const fileContent = await getGitHubFileContent(filename);
+    
+    if (!fileContent) {
+      return null;
+    }
+
+    const { frontmatter, content } = parseMarkdownContent(fileContent);
 
     // 使用 remark 将 markdown 转换为 HTML
     const processedContent = await remark()
       .use(remarkGfm) // 支持 GitHub Flavored Markdown
       .use(html, { sanitize: false }) // 允许HTML标签
-      .process(matterResult.content);
+      .process(content);
     const contentHtml = processedContent.toString();
 
     return {
       id: decodedId,
-      title: matterResult.data.title,
-      description: matterResult.data.description,
-      image: matterResult.data.image,
-      date: matterResult.data.date,
-      tags: matterResult.data.tags || [],
+      title: frontmatter.title,
+      description: frontmatter.description,
+      image: frontmatter.image,
+      date: frontmatter.date,
+      tags: frontmatter.tags || [],
       content: contentHtml,
     };
   } catch (error) {
@@ -89,21 +101,24 @@ export async function getCaseData(id: string): Promise<CaseData | null> {
 }
 
 // 获取所有案例的ID列表（用于静态生成）
-export function getAllCaseIds() {
-  const fileNames = fs.readdirSync(casesDirectory);
-  return fileNames
-    .filter(fileName => fileName.endsWith('.md'))
-    .map((fileName) => {
+export async function getAllCaseIds() {
+  try {
+    const files = await getGitHubCaseFiles();
+    return files.map((file) => {
       return {
         params: {
-          id: fileName.replace(/\.md$/, ''),
+          id: file.name.replace(/\.md$/, ''),
         },
       };
     });
+  } catch (error) {
+    console.error('Error fetching case IDs:', error);
+    return [];
+  }
 }
 
 // 获取最新的几个案例
-export function getLatestCases(count: number = 6): CaseMeta[] {
-  const allCases = getAllCases();
+export async function getLatestCases(count: number = 6): Promise<CaseMeta[]> {
+  const allCases = await getAllCases();
   return allCases.slice(0, count);
 }

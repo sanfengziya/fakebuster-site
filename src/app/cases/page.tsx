@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { getAllCases } from '@/lib/markdown';
 
-export default function CasesPage() {
-  const allCases = getAllCases();
+export default async function CasesPage() {
+  const allCases = await getAllCases();
 
   return (
     <div className="min-h-screen bg-gray-50">

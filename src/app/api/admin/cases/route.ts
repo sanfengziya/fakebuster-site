@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminToken } from '@/lib/auth';
-import fs from 'fs';
-import path from 'path';
-import matter from 'gray-matter';
-
-const casesDirectory = path.join(process.cwd(), 'data/cases');
+import { 
+  getGitHubCaseFiles, 
+  getGitHubFileContent, 
+  parseMarkdownContent,
+  createOrUpdateGitHubFile,
+  generateMarkdownContent
+} from '@/lib/github';
 
 // 获取所有案例列表
 export async function GET(request: NextRequest) {
@@ -13,17 +15,18 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const fileNames = fs.readdirSync(casesDirectory);
-    const cases = fileNames
-      .filter(fileName => fileName.endsWith('.md'))
-      .map((fileName) => {
-        const id = fileName.replace(/\.md$/, '');
-        const fullPath = path.join(casesDirectory, fileName);
-        const fileContents = fs.readFileSync(fullPath, 'utf8');
-        const matterResult = matter(fileContents);
+    const files = await getGitHubCaseFiles();
+    const cases = [];
+
+    for (const file of files) {
+      const id = file.name.replace(/\.md$/, '');
+      const fileContent = await getGitHubFileContent(file.name);
+      
+      if (fileContent) {
+        const { frontmatter, content } = parseMarkdownContent(fileContent);
 
         // 计算纯文本字数（去除markdown语法）
-        const plainText = matterResult.content
+        const plainText = content
           .replace(/#{1,6}\s+/g, '') // 去除标题标记
           .replace(/\*\*(.*?)\*\*/g, '$1') // 去除粗体标记
           .replace(/\*(.*?)\*/g, '$1') // 去除斜体标记
@@ -34,20 +37,24 @@ export async function GET(request: NextRequest) {
           .replace(/\s+/g, ' ') // 合并多个空格
           .trim();
         
-        return {
+        cases.push({
           id,
-          fileName,
-          title: matterResult.data.title,
-          description: matterResult.data.description,
-          date: matterResult.data.date,
-          tags: matterResult.data.tags || [],
+          fileName: file.name,
+          title: frontmatter.title,
+          description: frontmatter.description,
+          date: frontmatter.date,
+          tags: frontmatter.tags || [],
           wordCount: plainText.length
-        };
-      })
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        });
+      }
+    }
+
+    // 按日期排序
+    cases.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     return NextResponse.json({ cases });
   } catch (error) {
+    console.error('Error fetching cases:', error);
     return NextResponse.json(
       { error: '读取案例列表失败' },
       { status: 500 }
@@ -72,9 +79,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const filename = `${id}.md`;
+    
     // 检查文件是否已存在
-    const filePath = path.join(casesDirectory, `${id}.md`);
-    if (fs.existsSync(filePath)) {
+    const existingContent = await getGitHubFileContent(filename);
+    if (existingContent) {
       return NextResponse.json(
         { error: '案例ID已存在' },
         { status: 400 }
@@ -92,13 +101,25 @@ export async function POST(request: NextRequest) {
     };
 
     // 生成markdown文件内容
-    const fileContent = matter.stringify(content, frontmatter);
+    const fileContent = generateMarkdownContent(frontmatter, content);
 
-    // 写入文件
-    fs.writeFileSync(filePath, fileContent, 'utf8');
+    // 创建GitHub文件
+    const success = await createOrUpdateGitHubFile(
+      filename,
+      fileContent,
+      `Create new case: ${title}`
+    );
 
-    return NextResponse.json({ success: true, id });
+    if (success) {
+      return NextResponse.json({ success: true, id });
+    } else {
+      return NextResponse.json(
+        { error: '创建案例失败' },
+        { status: 500 }
+      );
+    }
   } catch (error) {
+    console.error('Error creating case:', error);
     return NextResponse.json(
       { error: '创建案例失败' },
       { status: 500 }
