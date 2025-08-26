@@ -170,16 +170,10 @@ export default function TeamPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
-              href="mailto:contact@fakebuster.com"
+              href="mailto:wen1906869@gmail.com"
               className="bg-red-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-red-700 transition-colors"
             >
               发送邮件
-            </a>
-            <a
-              href="tel:400-123-4567"
-              className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-gray-900 transition-colors"
-            >
-              电话咨询
             </a>
           </div>
         </div>

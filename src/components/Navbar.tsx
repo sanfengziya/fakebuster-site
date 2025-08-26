@@ -12,8 +12,6 @@ const Navbar = () => {
     { name: '首页', href: '/' },
     { name: '所有案例', href: '/cases' },
     { name: '团队介绍', href: '/team' },
-    { name: '证据库', href: '/evidence' },
-    { name: '视频中心', href: '/videos' },
   ];
 
   return (
